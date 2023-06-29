@@ -9,6 +9,7 @@ use App\Models\User;
 use GuzzleHttp\Psr7\Response;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Gate;
 
 class UserController extends Controller
 {
@@ -17,12 +18,43 @@ class UserController extends Controller
      */
     public function loginUser(Request $request)
     {
-       $input = $request->all();
-       Auth::attempt($input);
-       $user = Auth::user();
-       $token = $user->createToken('token')->accessToken;
+        $input = $request->all();
+        if (Auth::attempt($input)) {
+            $user = Auth::user();
+            $token = $user->createToken('token')->accessToken;
+    
+            return response()->json([
+                'status' => 200,
+                'token' => $token,
+                'user' => [
+                    'name' => $user->name
+                ]
+            ], 200);
+        }
+    
+        return response()->json([
+            'status' => 401,
+            'message' => 'Credenciais inválidas'
+        ], 401);
+    }
 
-        return Response(['status' => 200, 'token' => $token], 200);
+    public function userLogout()
+    {
+
+        if (Auth::guard('api')->check()) {
+            $user = Auth::guard('api')->user();
+            $user->tokens()->delete();
+            Auth::guard('api')->logout();
+    
+            return response()->json([
+                'message' => 'Usuário deslogado com sucesso',
+                'user' => $user
+            ], 200);
+        }
+    
+        return response()->json([
+            'message' => 'Usuário não está autenticado'
+        ], 401);
     }
 
    
@@ -56,20 +88,16 @@ class UserController extends Controller
                 'error' => 'Produto não encontrado'
             ], 404);
         }
-
       
         $product->name = $request->input('name');
         $product->phone = $request->input('phone');
-
         
         $product->save();
-
         
         return response()->json([
             'message' => 'Produto atualizado com sucesso', 
             'data' => $product
         ], 200);
-
     }
 
     public function deletarItem(Request $request)

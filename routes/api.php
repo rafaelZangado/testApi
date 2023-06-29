@@ -26,3 +26,10 @@ Route::controller(UserController::class)->group(function(){
     Route::get('user','getUserDetail');
     Route::get('logout','userLogout');
 })->middleware('auth:api');
+
+Route::middleware('auth:api')->group(function () {
+    Route::post('add', [UserController::class, 'addItem']);
+    Route::get('listar', [UserController::class, 'listarItens']);
+    Route::put('editar/{id}', [UserController::class, 'editarItem']);
+    Route::delete('deletar/{id}', [UserController::class, 'deletarItem']);
+});

@@ -2,19 +2,24 @@
 
 namespace App\Http\Controllers\API;
 
+use App\Contrcts\RepoInterface;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\ProductRequest;
-use App\Models\Products;
-use App\Models\User;
-use GuzzleHttp\Psr7\Response;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Facades\Gate;
 
 class UserController extends Controller
 {
+    protected $postRepo;
+
+    public function __construct(RepoInterface $repor)
+    {
+        $this->postRepo = $repor;
+    }
+
     /**
-     * Display a listing of the resource.
+     * @param Request $request
+     * @return JsonResponse
      */
     public function loginUser(Request $request)
     {
@@ -38,9 +43,13 @@ class UserController extends Controller
         ], 401);
     }
 
+    /**
+    * Realiza o logout do usuário autenticado.
+    *
+    * @return JsonResponse
+    */
     public function userLogout()
     {
-
         if (Auth::guard('api')->check()) {
             $user = Auth::guard('api')->user();
             $user->tokens()->delete();
@@ -57,56 +66,77 @@ class UserController extends Controller
         ], 401);
     }
 
-   
+    /**
+    * Obtém os detalhes do usuário autenticado.
+    *
+    * @return \Illuminate\Http\JsonResponse
+    */
     public function getUserDetail()
     {
         $user = Auth::guard('api')->user();
         return Response(['Data' => $user],200);
     }
 
-   
+    /**
+    * Adiciona um novo item (produto).
+    *
+    * @param  ProductRequest  $request
+    * @return JsonResponse
+    */
     public function addItem(ProductRequest $request)
     {
         $validatedData = $request->validated();
-        $product = Products::create($validatedData);
+        $product = $this->postRepo->createItem($validatedData);
         return response()->json($product, 201);
     }
 
-   
+    /**
+    * Lista todos os itens (produtos).
+    *
+    * @return JsonResponse
+    */
     public function listarItens()
     {
-        $products = Products::all();
-        return response()->json($products);
+        $products = $this->postRepo->getAll();
+        return response()->json($products);       
     }
 
+    /**
+    * Edita um item (produto) existente.
+    *
+    * @param  Request  $request
+    * @return JsonResponse
+    */
     public function editarItem(Request $request)
     {
-        $product = Products::find($request->id);
-       
+        $validatedData = $request->validated();
+        $product = $this->postRepo->editItem($validatedData);
+        
         if (!$product) {
             return response()->json([
                 'error' => 'Produto não encontrado'
             ], 404);
         }
-      
-        $product->name = $request->input('name');
-        $product->phone = $request->input('phone');
-        
-        $product->save();
         
         return response()->json([
-            'message' => 'Produto atualizado com sucesso', 
+            'message' => 'Produto atualizado com sucesso',
             'data' => $product
         ], 200);
     }
 
+    /**
+    * Deleta um item (produto) existente.
+    *
+    * @param  Request  $request
+    * @return JsonResponse
+    */
     public function deletarItem(Request $request)
     {
-        $product = Products::findOrFail($request->id);
-        $product->delete();
+        $product = $this->postRepo->deletarItem($request->all());
 
         return response()->json([
-            'message' => 'Produto excluído com sucesso'
+            'message' => 'Produto excluído com sucesso',
+            'Produto' => $product
         ]);
     }
 }
